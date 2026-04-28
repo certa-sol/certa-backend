@@ -5,7 +5,7 @@ import { Keypair, PublicKey } from '@solana/web3.js';
 import Irys from '@irys/sdk';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { createNft, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
-import { percentAmount } from '@metaplex-foundation/umi';
+import { generateSigner, percentAmount, publicKey } from '@metaplex-foundation/umi';
 
 export class MintError extends Error {}
 
@@ -48,7 +48,7 @@ export async function mintCredential(
     // 3. Mint NFT
     const umi = createUmi(config.HELIUS_RPC);
     umi.use(mplTokenMetadata());
-    const mint = Keypair.generate();
+    const mint = generateSigner(umi);
     const authority = Keypair.fromSecretKey(Uint8Array.from(config.CERTA_AUTHORITY_KEYPAIR));
     umi.use({ install: () => ({ signer: authority }) });
     await createNft(umi, {
@@ -58,9 +58,9 @@ export async function mintCredential(
       symbol: metadata.symbol,
       sellerFeeBasisPoints: percentAmount(0),
       isMutable: false,
-      tokenOwner: new PublicKey(session.wallet),
+      tokenOwner: publicKey(session.wallet),
     }).sendAndConfirm(umi);
-    return mint.publicKey.toBase58();
+    return mint.publicKey;
   } catch (e) {
     throw new MintError((e as Error).message);
   }

@@ -80,12 +80,9 @@ export async function listCredentials(filters?: {
   if (filters?.minScore !== undefined) {
     query = query.gte('score', filters.minScore);
   }
-  if (filters?.limit !== undefined) {
-    query = query.limit(filters.limit);
-  }
-  if (filters?.offset !== undefined) {
-    query = query.offset(filters.offset);
-  }
+  const limit = filters?.limit ?? 20;
+  const offset = filters?.offset ?? 0;
+  query = query.range(offset, offset + limit - 1);
   const { data, error } = await query;
   if (error) throw error;
   return (data || []).map((row) => ({

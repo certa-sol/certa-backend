@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
-import RedisStore from 'rate-limit-redis';
+
 import { redis } from '../lib/cache';
+import RedisStore, { RedisReply } from 'rate-limit-redis';
 
 /**
  * Per-wallet rate limiting using Redis store.
@@ -11,7 +12,7 @@ export const diagnosticCreateLimit = rateLimit({
   keyGenerator: req => (req as any).wallet || '',
   standardHeaders: true,
   legacyHeaders: false,
-  store: new RedisStore({ sendCommand: (...args: any[]) => redis.call(...args) }),
+  store: new RedisStore({ sendCommand: (...args: [string, ...string[]]) => redis.call(...args) as Promise<any> }),
 });
 
 export const assessmentCreateLimit = rateLimit({
@@ -20,7 +21,7 @@ export const assessmentCreateLimit = rateLimit({
   keyGenerator: req => (req as any).wallet || '',
   standardHeaders: true,
   legacyHeaders: false,
-  store: new RedisStore({ sendCommand: (...args: any[]) => redis.call(...args) }),
+  store: new RedisStore({ sendCommand: (...args: [string, ...string[]]) => redis.call(...args) as Promise<any> }),
 });
 
 export const turnSubmitLimit = rateLimit({
@@ -29,5 +30,5 @@ export const turnSubmitLimit = rateLimit({
   keyGenerator: req => (req as any).wallet || '',
   standardHeaders: true,
   legacyHeaders: false,
-  store: new RedisStore({ sendCommand: (...args: any[]) => redis.call(...args) }),
+  store: new RedisStore({ sendCommand: (...args: [string, ...string[]]) => redis.call(...args) as Promise<any> }),
 });
