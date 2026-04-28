@@ -27,6 +27,7 @@
     "pino-http": "^9.0.0",
     "rate-limit-redis": "^4.2.0",
     "tweetnacl": "^1.0.3",
+    "utf-8-validate": "^6.0.6",
     "zod": "^3.22.0"
   },
   "devDependencies": {
