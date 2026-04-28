@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <title>SSE Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        #status { margin-bottom: 10px; font-weight: bold; }
+        #log { white-space: pre-wrap; background: #f5f5f5; padding: 10px; border-radius: 6px; }
+    </style>
+    </head>
+    <body>
+        <div id="status">Connecting...</div>
+        <div id="log"></div>
+        <script>
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log');
+
+        function log(message) {
+        const line = document.createElement('div');
+        line.textContent = message;
+        logEl.appendChild(line);
+        }
+
+        const es = new EventSource(
+        'http://localhost:3001/api/session/8ff3f7ef-ce51-4fd0-8c48-2dd21b34353d/stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3YWxsZXQiOiI0QUpQS1VuTk45M1Y2czU2Q0hQa0xaeEw4eFdaOFhWeDZ5cEU5SlkzTVJZNiIsImlhdCI6MTc3NzMwNzU5NiwiZXhwIjoxNzc3MzkzOTk2fQ.qySicfXNEsTLWQNIDziyx9218cDMXuEwroL_KyOTsu0'
+        );
+
+        es.onopen = () => {
+        statusEl.textContent = '✅ Connected';
+        log('Connected to SSE stream');
+        };
+
+        es.onmessage = (e) => {
+        try {
+            const data = JSON.parse(e.data);
+            log('SSE: ' + JSON.stringify(data));
+        } catch {
+            log('SSE (raw): ' + e.data);
+        }
+        };
+
+        es.onerror = (e) => {
+        statusEl.textContent = '❌ Error / Disconnected';
+        log('SSE error occurred');
+        };
+        </script>
+    </body>
+</html>

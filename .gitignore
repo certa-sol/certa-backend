@@ -1,3 +1,7 @@
+# Wallets
+authority.json
+treasury.json
+
 # Logs
 logs
 *.log
