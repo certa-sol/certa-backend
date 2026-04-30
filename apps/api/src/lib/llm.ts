@@ -55,7 +55,7 @@ export async function nextTurn(
     }));
 
     const model = gemini.getGenerativeModel({
-      model: 'gemini-3.1-flash-preview',
+      model: 'gemini-3.1-flash-lite-preview',
       systemInstruction: systemPrompt,
       safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
