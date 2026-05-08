@@ -17,7 +17,11 @@ router.post('/verify', authenticate, async (req, res) => {
     await verifyPayment(signature, wallet, currency);
     res.json({ verified: true });
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    if (e.code === 'SIGNATURE_ALREADY_USED') {
+      res.status(402).json({ error: e.message, code: e.code });
+    } else {
+      res.status(400).json({ error: e.message });
+    }
   }
 });
 

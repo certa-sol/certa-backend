@@ -8,6 +8,7 @@ import { paymentRouter } from './routes/payment';
 import { credentialRouter } from './routes/credential';
 import { streamRouter } from './routes/stream';
 import { sessionRouter } from './routes/session';
+import { resultsRouter } from './routes/results';
 import { errorHandler } from './middleware/errorHandler';
 import { ping as redisPing } from './lib/cache';
 import { activeConnectionCount } from './lib/sse';
@@ -22,6 +23,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/payment', paymentRouter);
 app.use('/api/credential', credentialRouter);
 app.use('/api/session', sessionRouter);
+app.use('/api/results', resultsRouter);
 app.use('/api', streamRouter);
 
 app.get('/health', async (req, res) => {

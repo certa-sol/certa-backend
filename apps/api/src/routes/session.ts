@@ -29,7 +29,13 @@ router.post('/assessment', authenticate, assessmentCreateLimit, async (req, res)
     const result = await createAssessmentSession({ wallet, paymentSignature, currency });
     res.json(result);
   } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    if (e.message === 'PAYMENT_REQUIRED' || e.message === 'SIGNATURE_ALREADY_USED') {
+      res.status(402).json({ error: e.message });
+    } else if (e.message === 'INTERNAL_ERROR') {
+      res.status(500).json({ error: e.message });
+    } else {
+      res.status(400).json({ error: e.message });
+    }
   }
 });
 

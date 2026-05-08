@@ -1,11 +1,12 @@
 import { Session, AssessmentResult } from '../types';
 import { config } from '../config';
-import { createCredential } from '../db/credentials';
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { Keypair } from '@solana/web3.js';
 import Irys from '@irys/sdk';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { createNft, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { generateSigner, percentAmount, publicKey } from '@metaplex-foundation/umi';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class MintError extends Error {}
 
@@ -20,11 +21,32 @@ export async function mintCredential(
   result: AssessmentResult
 ): Promise<string> {
   try {
-    // 1. Build metadata
+    const authority = Keypair.fromSecretKey(
+      Uint8Array.from(config.CERTA_AUTHORITY_KEYPAIR)
+    );
+
+    const irys = new Irys({
+      url: config.IRYS_NODE_URL,
+      token: 'solana',
+      key: authority,
+    });
+
+    // 1. Upload image to Arweave first
+    // Place your credential image at: src/assets/credential.png
+    // Recommended: 1000x1000px PNG, under 1MB
+    const imagePath = path.join(__dirname, '../assets/credential.png');
+    const imageData = fs.readFileSync(imagePath);
+    const imageTx = await irys.upload(imageData, {
+      tags: [{ name: 'Content-Type', value: 'image/png' }],
+    });
+    const imageUri = `https://arweave.net/${imageTx.id}`;
+
+    // 2. Build metadata with image URI
     const metadata = {
       name: 'Certa — Solana Developer',
       symbol: 'CERTA',
       description: 'Verified Solana developer credential issued by Certa.',
+      image: imageUri,                        // ← wallets and marketplaces read this
       attributes: [
         { trait_type: 'Skill', value: 'Solana Core Development' },
         { trait_type: 'Score', value: String(result.score) },
@@ -32,25 +54,25 @@ export async function mintCredential(
         { trait_type: 'Wallet', value: session.wallet },
       ],
       properties: {
+        files: [{ uri: imageUri, type: 'image/png' }],  // ← Metaplex standard
+        category: 'image',
         verify_url: `https://certa.xyz/verify/${session.wallet}`,
       },
     };
-    // 2. Upload to Arweave via Irys
-    const irys = new Irys({
-      url: config.IRYS_NODE_URL,
-      token: 'solana',
-      key: Keypair.fromSecretKey(Uint8Array.from(config.CERTA_AUTHORITY_KEYPAIR)),
-    });
-    const txId = await irys.upload(JSON.stringify(metadata), {
+
+    // 3. Upload metadata JSON
+    const metaTx = await irys.upload(JSON.stringify(metadata), {
       tags: [{ name: 'Content-Type', value: 'application/json' }],
     });
-    const uri = `https://arweave.net/${txId}`;
-    // 3. Mint NFT
+    const uri = `https://arweave.net/${metaTx.id}`;
+
+    // 4. Mint NFT
     const umi = createUmi(config.HELIUS_RPC);
     umi.use(mplTokenMetadata());
-    const mint = generateSigner(umi);
-    const authority = Keypair.fromSecretKey(Uint8Array.from(config.CERTA_AUTHORITY_KEYPAIR));
     umi.use({ install: () => ({ signer: authority }) });
+
+    const mint = generateSigner(umi);
+
     await createNft(umi, {
       mint,
       uri,
@@ -60,6 +82,7 @@ export async function mintCredential(
       isMutable: false,
       tokenOwner: publicKey(session.wallet),
     }).sendAndConfirm(umi);
+
     return mint.publicKey;
   } catch (e) {
     throw new MintError((e as Error).message);

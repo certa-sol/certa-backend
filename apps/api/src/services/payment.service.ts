@@ -1,6 +1,6 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { config } from '../config';
-import { isSignatureUsed, recordSignature } from '../db/payments';
+import { isSignatureUsed, recordSignature, createPaymentRecord, getPaymentRecord, consumePayment } from '../db/payments';
 import { Currency } from '../types';
 
 export type PaymentErrorCode =
@@ -33,7 +33,16 @@ export async function verifyPayment(
   const tx = await conn.getParsedTransaction(signature, { maxSupportedTransactionVersion: 0 });
   if (!tx) throw new PaymentVerificationError('TX_NOT_FOUND', 'Transaction not found');
   if (tx.meta?.err) throw new PaymentVerificationError('TX_FAILED', 'Transaction failed');
-  if (await isSignatureUsed(signature)) throw new PaymentVerificationError('SIGNATURE_ALREADY_USED', 'Signature already used');
+
+  // Check existing payment record
+  const existingPayment = await getPaymentRecord(signature);
+  if (existingPayment) {
+    if (existingPayment.status === 'consumed') {
+      throw new PaymentVerificationError('SIGNATURE_ALREADY_USED', 'Signature already used');
+    }
+    // If verified, idempotent, do nothing
+    return;
+  }
 
   const treasury = config.TREASURY_WALLET;
   let valid = false;
@@ -76,5 +85,13 @@ export async function verifyPayment(
     if (!valid) throw new PaymentVerificationError('INVALID_TOKEN_MINT', 'Token mint or recipient invalid');
   }
   if (!valid) throw new PaymentVerificationError('INSUFFICIENT_AMOUNT', 'Insufficient payment amount');
-  await recordSignature({ signature, wallet: walletAddress, currency });
+
+  // Create payment record
+  await createPaymentRecord({
+    signature,
+    walletAddress,
+    currency,
+    status: 'verified',
+    verifiedAt: new Date(),
+  });
 }

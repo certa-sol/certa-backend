@@ -1,6 +1,7 @@
 export type SessionType = 'diagnostic' | 'assessment'
 export type SessionStatus = 'active' | 'complete' | 'abandoned'
 export type Currency = 'SOL' | 'USDC'
+export type PaymentStatus = 'verified' | 'consumed'
 export type DiagnosticVerdict = 'ready' | 'developing' | 'beginner'
 export type AssessmentVerdict = 'pass' | 'fail'
 
@@ -78,6 +79,37 @@ export interface Credential {
   mintAddress: string
   score: number
   issuedAt: string
+}
+
+export interface Result {
+  id: string
+  sessionId: string
+  wallet: string
+  type: SessionType
+  verdict: string
+  score?: number
+  topicScores: TopicScores
+  gaps?: string[]
+  resources?: string[]
+  strengths?: string[]
+  summary: string
+  integrityFlags?: string[]
+  completedAt: string
+}
+
+export interface InsertResultData {
+  sessionId: string
+  wallet: string
+  type: SessionType
+  verdict: string
+  score?: number
+  topicScores: TopicScores
+  gaps?: string[]
+  resources?: string[]
+  strengths?: string[]
+  summary: string
+  integrityFlags?: string[]
+  completedAt: Date
 }
 
 export interface JWTPayload {
