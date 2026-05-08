@@ -1,9 +1,12 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import { config } from '../config';
 import { Session, SessionType, Turn, TurnResponse, LLMResult } from '../types';
 import { logger } from '../lib/logger';
 
-const gemini = new GoogleGenerativeAI(config.GEMINI_API_KEY);
+const groq = new Groq({ apiKey: config.GROQ_API_KEY });
+
+// Model to use — swap to 'llama-3.1-8b-instant' for even higher rate limits if needed
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const SYSTEM_PROMPTS = {
   diagnostic: `You are Certa's diagnostic interviewer. Your job is to assess a Solana developer's current skill level through a concise adaptive interview of 8-12 questions.\n\nCover these topic areas, adjusting depth based on the quality of answers:\n- Solana account model (ownership, rent, PDAs)\n- Transaction and instruction structure\n- Anchor framework (IDL, constraints, CPIs)\n- SPL tokens and token program\n- Common patterns (escrow, staking, NFT minting)\n- Testing and deployment (localnet, devnet, mainnet)\n\nRules:\n- Ask one question at a time. Never list multiple questions.\n- Adapt difficulty based on the quality of previous answers. If an answer is strong, go deeper. If weak, simplify before moving on.\n- Do not praise or critique answers — remain neutral and professional.\n- After 8-12 user turns, produce ONLY the following JSON and nothing else. No preamble, no markdown fences.\n\n{\n  "complete": true,\n  "type": "diagnostic",\n  "verdict": "ready" | "developing" | "beginner",\n  "topicScores": {\n    "accountModel": <0-10>,\n    "transactions": <0-10>,\n    "anchor": <0-10>,\n    "splTokens": <0-10>,\n    "patterns": <0-10>,\n    "testing": <0-10>\n  },\n  "gaps": ["specific weak areas as short phrases"],\n  "resources": ["specific docs or tutorial URLs that address each gap"],\n  "summary": "2-3 sentence honest assessment of where this developer stands"\n}\n\nUntil you are ready to output the final JSON, respond with only the next question. No JSON until the interview is complete.`,
@@ -19,15 +22,15 @@ export async function startSession(type: SessionType): Promise<string> {
   if (type === 'diagnostic') {
     return 'To start, can you briefly describe your experience working with Solana?';
   } else {
-    return 'Explain how Solana\'s account model differs from Ethereum\'s. What are the implications for program design?';
+    return "Explain how Solana's account model differs from Ethereum's. What are the implications for program design?";
   }
 }
 
 /**
  * Processes the next turn in a session.
- * Sends full conversation history + system prompt to Gemini.
+ * Sends full conversation history + system prompt to Groq.
  * On normal turns: returns the next question.
- * On final turn: switches to JSON mode and returns the structured verdict.
+ * On final turn: requests JSON output and returns the structured verdict.
  * Never throws — on error, returns a safe fallback question.
  */
 export async function nextTurn(
@@ -48,33 +51,44 @@ export async function nextTurn(
       systemPrompt += `\nNote: The following integrity signals were detected during this session: [${integrityContext.join(', ')}]. Consider probing more deeply on the next turn if the interview is not yet complete.`;
     }
 
-    // Map directly to Gemini format — no intermediate Turn mapping
-    const contents = session.turns.map(t => ({
-      role: t.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: t.content }],
-    }));
-
-    const model = gemini.getGenerativeModel({
-      model: 'gemini-3.1-flash-lite-preview',
-      systemInstruction: systemPrompt,
-      safetySettings: [
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      ],
-    });
+    // Groq uses OpenAI-style messages — role is 'assistant' (not 'model' like Gemini)
+    const messages: Groq.Chat.ChatCompletionMessageParam[] = [
+      ...session.turns.map(t => ({
+        role: t.role as 'user' | 'assistant',
+        content: t.content,
+      })),
+    ];
 
     if (!isFinal) {
-      const result = await model.generateContent({ contents });
-      const text = result.response.text().trim();
-      return { complete: false, question: text };
-    } else {
-      const result = await model.generateContent({
-        contents,
-        generationConfig: { responseMimeType: 'application/json' },
+      const result = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+        ],
+        temperature: 0.7,
       });
-      const text = result.response.text().trim();
+
+      const text = result.choices[0].message.content?.trim() ?? '';
+      return { complete: false, question: text };
+
+    } else {
+      // Groq supports JSON mode via response_format — enforces valid JSON output
+      const result = await groq.chat.completions.create({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: 'system',
+            // Reinforce JSON-only output — required when using response_format json_object
+            content: systemPrompt + '\n\nYou must now output the final JSON verdict and nothing else.',
+          },
+          ...messages,
+        ],
+        temperature: 0.3, // Lower temp for structured output — less creative variance
+        response_format: { type: 'json_object' },
+      });
+
+      const text = result.choices[0].message.content?.trim() ?? '';
       try {
         return JSON.parse(text);
       } catch {
