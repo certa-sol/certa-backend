@@ -134,7 +134,7 @@ async function processTurnAsync(sessionId: string): Promise<void> {
     if ('complete' in llmResult && llmResult.complete) {
       const freshSession = await getSession(sessionId);
       if (!freshSession) throw new Error('Session not found after finalise');
-      await finaliseSession(session, llmResult);
+      await finaliseSession(freshSession, llmResult);
     }
   } catch (e: any) {
     sendSSEError(sessionId, e.message || 'LLM error');
