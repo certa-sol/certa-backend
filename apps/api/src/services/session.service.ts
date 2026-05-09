@@ -132,6 +132,8 @@ async function processTurnAsync(sessionId: string): Promise<void> {
     await invalidateCachedSession(sessionId);
     sendSSEEvent(sessionId, llmResult);
     if ('complete' in llmResult && llmResult.complete) {
+      const freshSession = await getSession(sessionId);
+      if (!freshSession) throw new Error('Session not found after finalise');
       await finaliseSession(session, llmResult);
     }
   } catch (e: any) {
