@@ -70,7 +70,8 @@ export async function createAssessmentSession(data: {
     return { sessionId: session.id, question };
   } catch (error) {
     // If session creation fails, we could revert payment, but for now, throw
-    throw new Error('INTERNAL_ERROR');
+    console.error('Session creation failed:', error); // see the real error
+    throw error;
   }
 }
 
