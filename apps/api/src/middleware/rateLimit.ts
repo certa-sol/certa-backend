@@ -17,7 +17,7 @@ export const diagnosticCreateLimit = rateLimit({
 
 export const assessmentCreateLimit = rateLimit({
   windowMs: 24 * 60 * 60 * 1000,
-  max: 3,
+  max: 100,
   keyGenerator: req => (req as any).wallet || '',
   standardHeaders: true,
   legacyHeaders: false,
