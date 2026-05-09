@@ -10,9 +10,11 @@ export async function createSession(data: {
   paymentSignature?: string;
   currency?: Currency;
 }): Promise<Session> {
+  const { paymentSignature, currency, ...rest } = data;
+
   const { data: result, error } = await supabase
     .from('sessions')
-    .insert([{ ...data, payment_signature: data.paymentSignature, currency: data.currency }])
+    .insert([{ ...rest, payment_signature: data.paymentSignature, currency: data.currency }])
     .select()
     .single();
   if (error) throw error;
