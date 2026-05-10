@@ -70,6 +70,13 @@ export async function nextTurn(
       });
 
       const text = result.choices[0].message.content?.trim() ?? '';
+
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed.complete === true) return parsed; // LLM finished on its own
+      } catch {
+        // Not JSON, normal question response
+      }
       return { complete: false, question: text };
 
     } else {
