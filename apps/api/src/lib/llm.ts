@@ -42,9 +42,9 @@ export async function nextTurn(
 
     const type = session.type;
     const userTurns = session.turns.filter(t => t.role === 'user');
-    const isFinal =
-      (type === 'diagnostic' && userTurns.length >= 8) ||
-      (type === 'assessment' && userTurns.length >= 15);
+    const forceFinish =
+      (type === 'diagnostic' && userTurns.length >= 12) ||
+      (type === 'assessment' && userTurns.length >= 20);
 
     let systemPrompt = SYSTEM_PROMPTS[type];
     if (integrityContext && integrityContext.length > 0) {
@@ -59,7 +59,7 @@ export async function nextTurn(
       })),
     ];
 
-    if (!isFinal) {
+    if (!forceFinish) {
       const result = await groq.chat.completions.create({
         model: GROQ_MODEL,
         messages: [
