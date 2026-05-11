@@ -94,3 +94,23 @@ export async function listCredentials(filters?: {
     issuedAt: row.issued_at,
   }));
 }
+
+/**
+ * Lists all credentials for a specific wallet address.
+ */
+export async function listCredentialsByWallet(wallet: string): Promise<Credential[]> {
+  const { data, error } = await supabase
+    .from('credentials')
+    .select('*')
+    .eq('wallet', wallet)
+    .order('issued_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    id: row.id,
+    wallet: row.wallet,
+    sessionId: row.session_id,
+    mintAddress: row.mint_address,
+    score: row.score,
+    issuedAt: row.issued_at,
+  }));
+}

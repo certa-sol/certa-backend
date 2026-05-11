@@ -1,8 +1,21 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { getCredentialByMint, listCredentials } from '../db/credentials';
+import { getCredentialByMint, listCredentials, listCredentialsByWallet } from '../db/credentials';
+import { authenticate } from '../middleware/authenticate';
 
 const router = Router();
+
+router.get('/wallet/:walletAddress', authenticate, async (req, res) => {
+  try {
+    const wallet = (req as any).wallet;
+    const { walletAddress } = req.params;
+    if (wallet !== walletAddress) return res.status(403).json({ error: 'Forbidden' });
+    const credentials = await listCredentialsByWallet(walletAddress);
+    res.json({ credentials });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
 
 router.get('/:mintAddress', async (req, res) => {
   try {

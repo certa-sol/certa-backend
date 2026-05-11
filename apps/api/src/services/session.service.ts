@@ -132,6 +132,8 @@ async function processTurnAsync(sessionId: string): Promise<void> {
     await invalidateCachedSession(sessionId);
     sendSSEEvent(sessionId, llmResult);
     if ('complete' in llmResult && llmResult.complete) {
+      console.log('processTurnAsync: calling finaliseSession');
+      
       const freshSession = await getSession(sessionId);
       if (!freshSession) throw new Error('Session not found after finalise');
       await finaliseSession(freshSession, llmResult);

@@ -100,3 +100,34 @@ export async function consumePayment(signature: string, consumedAt: Date): Promi
     .eq('signature', signature);
   if (error) throw error;
 }
+
+/**
+ * Gets a verified (unconsumed) payment for a wallet, if one exists.
+ */
+export async function getUnconsumedPaymentByWallet(walletAddress: string): Promise<{
+  signature: string;
+  walletAddress: string;
+  currency: Currency;
+  status: PaymentStatus;
+  verifiedAt: string;
+  consumedAt: string | null;
+} | null> {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('wallet_address', walletAddress)
+    .eq('status', 'verified')
+    .order('verified_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    signature: data.signature,
+    walletAddress: data.wallet_address,
+    currency: data.currency,
+    status: data.status as PaymentStatus,
+    verifiedAt: data.verified_at,
+    consumedAt: data.consumed_at,
+  };
+}
