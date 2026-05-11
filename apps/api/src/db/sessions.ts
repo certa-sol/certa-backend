@@ -48,11 +48,23 @@ export async function appendTurn(id: string, turn: Turn): Promise<void> {
 
 /**
  * Updates a session with partial fields.
+ * Maps camelCase Session keys to snake_case DB column names.
  */
 export async function updateSession(id: string, updates: Partial<Session>): Promise<void> {
+  const dbUpdates: Record<string, unknown> = {};
+
+  if (updates.status !== undefined) dbUpdates.status = updates.status;
+  if (updates.verdict !== undefined) dbUpdates.verdict = updates.verdict;
+  if (updates.score !== undefined) dbUpdates.score = updates.score;
+  if (updates.scores !== undefined) dbUpdates.scores = updates.scores;
+  if (updates.gaps !== undefined) dbUpdates.gaps = updates.gaps;
+  if (updates.resources !== undefined) dbUpdates.resources = updates.resources;
+  if (updates.summary !== undefined) dbUpdates.summary = updates.summary;
+  if (updates.integrityFlags !== undefined) dbUpdates.integrity_flags = updates.integrityFlags;
+
   const { error } = await supabase
     .from('sessions')
-    .update(updates)
+    .update(dbUpdates)
     .eq('id', id);
   if (error) throw error;
 }

@@ -12,7 +12,12 @@ export async function createCredential(data: {
 }): Promise<Credential> {
   const { data: result, error } = await supabase
     .from('credentials')
-    .insert([{ ...data, session_id: data.sessionId, mint_address: data.mintAddress }])
+    .insert([{
+      wallet: data.wallet,
+      session_id: data.sessionId,
+      mint_address: data.mintAddress,
+      score: data.score,
+    }])
     .select()
     .single();
   if (error) throw error;
